@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang=en-GB>
+
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<title>Data-Oriented Django</title>
+
+<link rel="stylesheet" href="dist/reset.css">
+<link rel="stylesheet" href="dist/reveal.css">
+<link rel="stylesheet" href="dist/theme/django.css">
+
+<!-- Theme used for syntax highlighted code -->
+<link rel="stylesheet" href="plugin/highlight/monokai.css">
+</head>
+
+<body>
+<div class="reveal">
+<div class="slides">
+
+<section>
+  <h1>Data-Oriented Django</h1>
+  <h2>Adam Johnson</h2>
+</section>
+
+<section>
+  <h2>Computers are friggin’ fast</h2>
+</section>
+
+<section>
+  <p>3.2 billion operations per second
+  <p class=fragment>&times; 10 cores
+  <p class=fragment>= 32 billion operations per second
+</section>
+
+<section>
+  <h3>Grug-brained Adam</h3>
+  <p>
+    &nbsp;&nbsp;1419122974736928279<br>
+    + 9350264782187121390
+  </p>
+  <p class=fragment><em>55 seconds…</em></p>
+  <p class=fragment>
+    = 10769387766924049669
+  </p>
+  <p class=fragment>❌</p>
+</section>
+
+<section>
+  <p>Adam: 0.018 ops/sec, 0% accuracy
+  <p>Macbook: 32 billion ops/sec, 100% accuracy
+</section>
+
+<section>
+  <h3>Where does all that speed go?</h3>
+</section>
+
+<!--<section>
+  <p>Wirth’s Law:</p>
+  <blockquote>
+    “Software is getting slower more rapidly than hardware is becoming faster.”
+  </blockquote>
+</section>-->
+
+<section data-background-color="#f8f8f8">
+  <h2>Data-Oriented Design</h2>
+</section>
+
+<section>
+  <h3>It’s not…</h3>
+  <ul>
+    <li class=fragment>Domain-Driven Design
+    <li class=fragment>Data-Driven Design
+    <li class=fragment>Data-Oriented Programming
+</section>
+
+<section data-background-color="#f8f8f8">
+  <h2>Data-Oriented Design</h2>
+</section>
+
+<section>
+  <h2>🧘 <em>Shoshin</em>: Beginner’s mind 🧘</h2>
+</section>
+
+<section>
+  <img src=img/software.svg class=r-stretch>
+</section>
+
+<section>
+  <h2>
+    Software’s only job is to<br>
+    <em>transform data</em>
+  </h2>
+</section>
+
+<section>
+  <h2>
+    Users only care about<br>
+    <em>getting their output data</em>
+  </h2>
+</section>
+
+<section>
+  <h2>Data Characteristics</h2>
+  <ul>
+    <li>Format
+    <li>Volume
+    <li>Latency
+    <li>Throughput
+    <li>Statistical distribution
+  </ul>
+</section>
+
+<section>
+  <h2>Context is Everything</h2>
+</section>
+
+<section>
+  <h2><em>por exemplo</em></h2>
+  <h3>Check if a number exists in a given set</h3>
+  <pre class=fragment><code class=language-python data-trim>
+numbers: set[int]
+
+def is_match(number: int) -> bool:
+    return number in numbers
+  </code></pre>
+</section>
+
+<section>
+  <h3>What if there’s just a single number?</h3>
+  <pre class=fragment><code class=language-python data-trim>
+def is_match(number: int) -> bool:
+    return number == 42
+  </code></pre>
+</section>
+
+<section>
+  <h3>What if a billion numbers?</h3>
+  <pre class=fragment><code class=language-python data-trim>
+def is_match(number: int) -> bool:
+    with connection.cursor():
+        cursor.execute(
+            "SELECT 1 FROM numbers WHERE n = %s",
+            (number,),
+        )
+        return (cursor.fetchone() is not None)
+  </code></pre>
+</section>
+
+<section>
+  <h3>What if matching many numbers against few?</h3>
+  <pre class=fragment><code class=language-python data-trim>
+numbers: set[int]
+
+def matches(sought: set[int]) -> set[int]:
+    return numbers.intersection(sought)
+  </code></pre>
+</section>
+
+<section>
+  <p>What if set is all odd numbers between 1 and 1 million?
+  <p>What if false positives are acceptable? (bloom filter)
+  <p>…
+</section>
+
+<section>
+  <h2>Implementation depends on data characteristics</h2>
+</section>
+
+<section>
+  <h2>
+    Software’s only job is to<br>
+    transform data using<br>
+    <em>specific hardware</em>
+  </h2>
+</section>
+
+<section>
+  <h3>What hardware?</h3>
+  <div class=r-stack>
+    <p class="fragment current-visible" style=width:20%>
+      <img src=img/ti-85.png>
+      TI-85?
+    </p>
+    <p class="fragment current-visible" style=width:50%>
+      <img src=img/quantum-computer.jpg>
+      Quantum Computer?
+    </p>
+    <p class="fragment current-visible" style=width:30%>
+      <img src=img/turing-tumble.jpg>
+      Turing Tumble?
+    </p>
+    <p class="fragment" style=width:50%>
+      <img src=img/intel-cpu.png>
+      💁‍♂️ General-purpose CPU
+    </p>
+  </div>
+</section>
+
+<section>
+  <h3>General-purpose CPU</h3>
+  <img src=img/cpu-memory.svg class=r-stretch>
+</section>
+
+<section>
+  <h3>Processor-memory gap</h3>
+  <img src=img/processor-memory-gap.svg class=r-stretch>
+</section>
+
+<!--
+<section>
+  <h3>Two mitigations</h3>
+  <ol>
+    <li>CPU Caches
+    <li>SIMD
+  </li>
+</section>
+ -->
+
+<section>
+  <h3>CPU caches</h3>
+  <img src=img/cpu-cache-memory.svg class=r-stretch>
+</section>
+
+<section>
+  <h3><em>Three</em> levels of cache!</h3>
+  <img src=img/cpu-caches-memory.svg class=r-stretch>
+</section>
+
+<section>
+  <h3><em>Three</em> levels of cache!</h3>
+  <img src=img/cpu-caches-memory-stats.svg class=r-stretch>
+</section>
+
+<section>
+  <h3>Implications</h3>
+  <ul>
+    <li>Use smaller representations
+    <li>Lay out data in access order
+  </ul>
+</section>
+
+<section>
+  <h3>Python’s built-in types are big</h3>
+  <pre><code class=language-python data-trim>
+In [1]: 64 // 8
+Out[1]: 8
+
+In [2]: import sys
+
+In [3]: sys.getsizeof(9001)
+Out[3]: 28
+  </code></pre>
+</section>
+
+<section>
+  <h3>Python’s built-in types are big</h3>
+  <pre><code class=language-python data-trim>
+In [4]: numbers = list(range(1000))
+
+In [5]: len(numbers) * 8
+Out[5]: 8000
+
+In [6]: (
+   ...:     sys.getsizeof(numbers)
+   ...:     + sum(sys.getsizeof(n) for n in numbers)
+   ...: )
+Out[6]: 36052
+  </code></pre>
+</section>
+
+<section>
+  <h3>C data types much slimmer</h3>
+  <pre><code class=language-python data-trim>
+In [7]: import array
+
+In [8]: numbers2 = array.array('Q', range(1000))
+
+In [9]: sys.getsizeof(numbers2)
+Out[9]: 8320
+  </code></pre>
+  <p class=fragment>Normally use numpy or pandas for arrays
+</section>
+
+<!--
+<section>
+  <h3>SIMD: Single Instruction Multiple Data</h3>
+</section> -->
+
+<section data-background-color="#f8f8f8">
+  <h2>
+    Data-Oriented Design<br>
+    <em>for the Web</em>
+  </h2>
+</section>
+
+<section>
+  <img src=img/data-oriented-web.svg class=r-stretch>
+</section>
+
+<section>
+  <h3>already hella fast</h3>
+  <img src=img/data-oriented-web-user-browser.svg class=r-stretch>
+</section>
+
+<section>
+  <img src=img/data-oriented-web-simplified.svg class=r-stretch>
+</section>
+
+<section>
+  <img src=img/data-oriented-django.svg class=r-stretch>
+</section>
+
+<section>
+  <img src=img/data-oriented-frontend-microservices.svg class=r-stretch>
+</section>
+
+<section>
+  <h3>How fast?</h3>
+  <p style=text-align:left>
+    ≤100ms - 👌👌<br>
+    ≤1s - 👌<br>
+    ≤3s - 🫳 - at 3s lose ~50% of visitors<br>
+    &gt;10s - users likely to retry, or give up
+</section>
+
+<section>
+  <img src=img/data-oriented-django-focus-left.svg class=r-stretch>
+</section>
+
+<section>
+  <h3>Speed up request/response cycle</h3>
+  <ol>
+    <li class=fragment>Write minimal, performant HTML
+    <li class=fragment>HTTP Caching
+    <li class=fragment>HTTP/3, or at least 2
+    <li class=fragment>Response compression (<code>GZipMiddleware</code>)
+    <li class=fragment>HTML minification (django-minify-html)
+    <li class=fragment>Use a CDN (Content Delivery Network)
+      <!-- ping for adamj.eu: 100ms w/o CDN, 10ms with -->
+</section>
+
+<section>
+  <h3>Resources</h3>
+  <ul>
+    <li>MDN: Web Performance
+    <li><a href="https://web.dev/learn/">web.dev/learn</a>
+    <li><a href="https://webpagetest.org">WebPageTest.org</a>
+    <li><a href="https://web.dev/measure/">web.dev/measure</a>
+</section>
+
+<!--<section>
+  <h3>1. Write minimal HTML</h3>
+  <pre><code class=language-html data-trim>
+&lt;nav&gt;
+  &lt;a href="/dashboard/" class="bg-gray-900 text-white px-3
+  py-2 rounded-md text-sm font-medium"&gt;Dashboard&lt;/a&gt;
+  &lt;a href="/team/" class="bg-gray-900 text-white px-3
+  py-2 rounded-md text-sm font-medium"&gt;Team&lt;/a&gt;
+  </code></pre>
+  <pre class=fragment><code class=language-html data-trim>
+&lt;nav&gt;
+  &lt;a href="/dashboard/"&gt;Dashboard&lt;/a&gt;
+  &lt;a href="/team/"&gt;Team&lt;/a&gt;
+  </code></pre>
+</section>
+
+<section>
+  <h3>2. Use a CDN</h3>
+  <p>Content Delivery Network</p>
+  <p>A network of servers linked by private network</p>
+
+  <ul>
+    <li>adamj.eu without CDN: 250ms
+    <li>With CDN: 50ms
+</section>-->
+
+<section>
+  <img src=img/data-oriented-django-focus-right.svg class=r-stretch>
+</section>
+
+<section>
+  <h3>Speed up query/result cycle</h3>
+</section>
+
+<section>
+  <img src=img/cpu-memory-database-stats.svg class=r-stretch>
+</section>
+
+<section>
+  <h3>Speed up queries and results</h3>
+  <ol>
+    <li class=fragment>Avoid N+1 queries
+    <li class=fragment>Split models
+    <li class=fragment>Multiple counts in one pass
+</section>
+
+<section>
+  <h3>1. Avoid N+1 queries</h3>
+  <pre><code class=language-python data-trim>
+books = Book.objects.order_by("title")
+for book in books:
+    print(book.title, "by", book.author.name)
+  </code></pre>
+  <ol class=fragment>
+    <li>Iterate <code>books</code><br>
+    <li>For each of <strong>N</strong> books:<br>
+      fetch <code>book.author</code></code>
+</section>
+
+<section>
+  <h3>1. Avoid N+1 queries</h3>
+  <pre><code class=language-python data-trim>
+books = (
+    Book.objects.order_by("title")
+    .select_related("author")
+)
+for book in books:
+    print(book.title, "by", book.author.name)
+  </code></pre>
+  <ol class=fragment>
+    <li>Fetch <code>books</code> with <code>author</code> joined in
+</section>
+
+<section>
+  <h3>1. Avoid N+1 queries</h3>
+  <table style=font-size:75%>
+    <thead>
+      <tr>
+        <td><code>book.name</code>
+        <td><code>author.name</code>
+    <tbody>
+    <tr>
+      <td>The Hundred and One Dalmatians
+      <td>Dodie Smith
+    <tr>
+      <td>The Lost World
+      <td>Arthur Conan Doyle
+    <tr>
+      <td>The Hound of the Baskervilles
+      <td>Arthur Conan Doyle
+    <tr>
+      <td>His Last Bow
+      <td>Arthur Conan Doyle
+  </table>
+</section>
+
+<section>
+  <h3>1. Avoid N+1 queries</h3>
+  <pre><code class=language-python data-trim>
+books = (
+    Book.objects.order_by("title")
+    .prefetch_related("author")
+)
+for book in books:
+    print(book.title, "by", book.author.name)
+  </code></pre>
+  <ol class=fragment>
+    <li>Fetch <code>books</code>
+    <li>Fetch related <code>author</code>s for all books
+</section>
+
+<section>
+  <h3>1. Avoid N+1 queries</h3>
+  <p>django-auto-prefetch
+  <pre><code class=language-python data-trim>
+books = Book.objects.order_by("title")
+for book in books:
+    print(book.title, "by", book.author.name)
+  </code></pre>
+  <ol class=fragment>
+    <li>Fetch <code>books</code>
+    <li>On first access of <code>book.author</code>:<br>
+        Fetch related <code>author</code>s for all books
+</section>
+
+<section>
+  <h3>2. Split models</h3>
+  <pre><code class=language-python data-trim>
+class User(AbstractUser):
+    avatar = models.ImageField(...)
+    ...
+  </code></pre>
+  <p class=fragment>Task: <em>Store user’s ACME access token and refresh token</em>
+
+</section>
+
+<section>
+  <h3>2. Split models</h3>
+  <p>Not great:
+  <pre><code class=language-python data-trim>
+class User(AbstractUser):
+    avatar = models.ImageField(...)
+    ...
+    acme_access_token = models.TextField()
+    acme_access_expires = models.DateTimeField()
+    acme_refresh_token = models.TextField()
+  </code></pre>
+  <p class=fragment>Slows down every place users are queried
+</section>
+
+<section>
+  <h3>2. Split models</h3>
+  <pre><code class=language-python data-trim>
+class User(AbstractUser):
+    avatar = models.ImageField(...)
+    ...
+
+class UserAcmeToken(models.Model):
+    user = models.OneToOneField(User, primary_key=True)
+    access_token = models.TextField()
+    access_expires = models.DateTimeField()
+    refresh_token = models.TextField()
+  </code></pre>
+  <p>👍👍👍
+</section>
+
+<section>
+  <h3>3. Multiple counts in one pass</h3>
+  <pre><code class=language-python data-trim>
+published_count = (
+    author.book_set.filter(verified=True).count()
+)
+unpublished_count = (
+    author.book_set.filter(verified=False).count()
+)
+  </code></pre>
+</section>
+
+<section>
+  <h3>3. Multiple counts in one pass</h3>
+  <pre><code class=language-python data-trim>
+counts = (
+    author.book_set.aggregate(
+        verified=Count('pk', filter=Q(verified=True)),
+        unverified=Count('pk', filter=Q(verified=False)),
+    )
+)
+  </code></pre>
+</section>
+
+<section>
+  <h3>Resources</h3>
+  <ul>
+    <li>Docs: Database access optimization
+    <li>The Temple of Django Database Performance
+    <li>Post: “Django and the N+1 Queries Problem”
+    <li>django-debug-toolbar (or Kolo)
+</section>
+
+<section data-background-color="#f8f8f8">
+  <h2>Data-Oriented Design</h2>
+</section>
+
+<section>
+  <h2>
+    Software’s only job is to<br>
+    <em>transform data</em>
+  </h2>
+</section>
+
+<section>
+  <h2>
+    Users only care about<br>
+    <em>getting their output data</em>
+  </h2>
+</section>
+
+<section>
+  <h3>Resources</h3>
+  <ul>
+    <li>Mike Acton - Data-Oriented Design and C++
+    <li>Andrew Kelley - Practical DOD
+    <li>Andreas Fredriksson - Context is Everything
+</section>
+
+<section>
+  <h1>Thank you! 🤗</h1>
+  <ul>
+    <li>Adam Johnson
+    <li>@adamchainz on GitHub &amp; Twitter
+    <li>me@adamj.eu
+    <li><a href="https://github.com/adamchainz/talk-data-oriented-django">github.com/adamchainz/talk-data-oriented-django</a>
+    <li>Books: <strong>Boost Your Django DX</strong> &amp; <strong>Speed Up Your Django Tests</strong>
+  </ul>
+</section>
+
+<!--
+<section>
+  <h2>Where I’m coming from</h2>
+</section>
+
+<section>
+  <img src=img/zig-logo-light.svg style=width:50%>
+</section>
+
+<section>
+  <img src=img/andrew-kelley.jpg class=r-stretch>
+</section>
+
+<section>
+  <img src=img/mike-acton.jpg class=r-stretch>
+</section>
+
+<section>
+  <h2>Computers are wicked fast</h2>
+</section>
+
+<section>
+  <p>JSON aggregator program: 41MB/s to 1254MB/s</p>
+  <p><em>Context is Everything—Andreas Fredriksson</em></p>
+</section>
+
+ -->
+
+</div>
+</div>
+
+<script src="dist/reveal.js"></script>
+<script src="plugin/highlight/highlight.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+
+    controls: false,
+    // center: false,
+    progress: false,
+
+    plugins: [ RevealHighlight ]
+  });
+</script>
+</body>
+</html>
